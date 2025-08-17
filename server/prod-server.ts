@@ -24,21 +24,21 @@ async function main() {
 
   // Read Vite manifest to resolve hashed asset file names
   const manifestPath = path.join(distClient, '.vite', 'manifest.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, any>
   const clientEntry = manifest['app/entry-client.tsx'] || manifest['/app/entry-client.tsx']
   const moduleEntry = clientEntry?.file || 'app/entry-client.js'
-  const cssAssets = clientEntry?.css || []
+  const cssAssets = (clientEntry?.css || []) as string[]
 
   // Use a custom 404 handler to render SSR for anything not served above
   app.setNotFoundHandler(async (req, reply) => {
     try {
       const out = await renderRequest({
-        url: req.raw.url,
-        method: req.raw.method,
-        headers: req.headers,
+        url: (req.raw as any).url,
+        method: (req.raw as any).method,
+        headers: req.headers as any,
       })
       // Inject CSS before </head> (case-insensitive)
-      const cssTags = cssAssets.map((href) => `<link rel=\"stylesheet\" href=\"/${href}\"></link>`).join('')
+      const cssTags = cssAssets.map((href) => `<link rel="stylesheet" href="/${href}"></link>`).join('')
       let html = out.body.replace(/<\/head>/i, `${cssTags}</head>`) || out.body
 
       // Replace the entry script src robustly (handle formatting/attribute order)
@@ -47,11 +47,11 @@ async function main() {
         html = html.replace(scriptRe, `$1$2/${moduleEntry}$2$3`)
       } else {
         // Fallback: inject built entry before </body> if no dev entry script found
-        html = html.replace(/<\/body>/i, `<script type=\"module\" src=\"/${moduleEntry}\"></script></body>`) || html
+        html = html.replace(/<\/body>/i, `<script type="module" src="/${moduleEntry}"></script></body>`) || html
       }
       for (const [k, v] of out.headers) reply.header(k, v)
       reply.code(out.status).send(html)
-    } catch (err) {
+    } catch (err: any) {
       reply.code(500).send(String(err?.stack || err))
     }
   })

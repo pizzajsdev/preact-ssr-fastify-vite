@@ -1,5 +1,6 @@
 import middie from '@fastify/middie'
 import fastifyStatic from '@fastify/static'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import fastify from 'fastify'
 import { exec } from 'node:child_process'
 import path from 'node:path'
@@ -65,7 +66,7 @@ async function main() {
   app.use(vite.middlewares)
 
   // Fallback to SSR for anything not served above (static/assets).
-  app.setNotFoundHandler(async (req, reply) => {
+  app.setNotFoundHandler(async (req: FastifyRequest, reply: FastifyReply) => {
     try {
       // Always fetch the current SSR environment and import the entry.
       const env = vite.environments.ssr
@@ -76,21 +77,21 @@ async function main() {
 
       // Render our app HTML
       const out = await renderRequest({
-        url: req.raw.url,
-        method: req.raw.method,
-        headers: req.headers,
+        url: (req.raw as any).url,
+        method: (req.raw as any).method,
+        headers: req.headers as any,
       })
       // Ask Vite to transform the HTML (inject preloads, CSS, module scripts)
-      const transformed = await vite.transformIndexHtml(req.raw.url, out.body)
+      const transformed = await vite.transformIndexHtml((req.raw as any).url, out.body)
       // Apply returned headers and status code
       for (const [k, v] of out.headers) {
-        reply.header(k, v)
+        reply.header(k, v as any)
       }
 
       // Show moduleGraph of the root file:
       // console.log('moduleGraph', await vite.environments.ssr.moduleGraph.getModuleByUrl('/app/root.tsx'))
       reply.code(out.status).send(transformed)
-    } catch (err) {
+    } catch (err: any) {
       // Fix stack trace to map back to source modules using Vite utilities
       vite.ssrFixStacktrace(err)
       reply.code(500).send(String(err?.stack || err))
@@ -98,7 +99,7 @@ async function main() {
   })
 
   // When server-only modules (loaders/actions/root/router) change, force a full reload
-  const shouldFullReload = (file) => {
+  const shouldFullReload = (file: string) => {
     const rel = path.relative(process.cwd(), file).split('\\').join('/')
     return rel.startsWith('app/')
     // || rel === 'app/root.tsx' ||
@@ -128,7 +129,7 @@ async function main() {
         : process.platform === 'win32'
           ? `start ${target}`
           : `xdg-open "${target}"`
-    exec(cmd, (err) => err && console.error('Failed to open browser:', err.message))
+    exec(cmd, (err: Error | null) => err && console.error('Failed to open browser:', (err as any).message))
   }
 }
 
