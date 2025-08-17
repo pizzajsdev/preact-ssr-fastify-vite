@@ -21,7 +21,7 @@ structure.
 
 ## Prerequisites
 
-- Node.js 22.15+ with `pnpm`.
+- Node.js 22.17+ with `pnpm`.
 
 ## Getting Started
 
@@ -61,7 +61,7 @@ structure.
 ## Project Structure
 
 ```
-preact-fastify-ssr/
+preact-ssr-fastify-vite/
 │
 ├─ package.json          # scripts and dependencies
 ├─ vite.config.ts        # Vite config using Environment API
@@ -86,8 +86,8 @@ Files inside `app/routes/` map to URL paths:
 
 - `index.tsx` → `/`
 - `about.tsx` → `/about`
-- Nested folders become nested paths, and dynamic segments like `[id].tsx` map to `/users/:id` patterns. Catch‑all
-  `[...all].tsx` becomes a wildcard route (`*`).
+- Nested folders become nested paths, and dynamic segments like `[id].tsx` map to `/users/:id` patterns (`params.id`).
+- Catch‑all `[...name].tsx` captures the remaining path segments into `params[name]` as a `string[]`.
 
 Each route file exports:
 
@@ -96,29 +96,32 @@ Each route file exports:
 - `action?`: a function `(ctx) => data` that handles POST/PUT/DELETE/PATCH submissions server‑side (e.g., form actions).
 - `meta?`: a function `(ctx) => { title: string, description?: string }` providing document meta tags.
 
-The router (`app/router.ts`) eagerly imports all route modules using Vite’s `import.meta.glob` and implements a simple
-matcher for static, dynamic and wildcard segments.
+Notes:
+
+- `loader`/`action` may return a `Response` object to short‑circuit rendering (e.g., redirects). Throwing `Response` is
+  not yet supported.
 
 ### Root Document
 
-`app/root.tsx` defines the HTML skeleton of every page. It may export a `loader` and `action` like route modules. The
-default export receives `{ url, meta, children, loaderData, actionData }` and returns `<html>`, `<head>` and `<body>`
-elements. Global styles are imported here via `import './styles.css'`; Vite automatically processes CSS imports and
-extracts them into the client bundle.
+`app/root.tsx` defines the HTML skeleton of every page. It exports `Layout(props)` which returns the `<html>` document
+and may also export a `loader`/`action` like route modules. The default export is an optional wrapper used inside
+`<body>` that renders around the current page. Global styles are imported here via `import './styles.css'`; Vite
+automatically processes CSS imports and extracts them into the client bundle.
 
 ### Environment API & Server Integration
 
 `vite.config.ts` defines the project’s environments:
 
-- **Client** (implicit): builds the browser bundle to `dist/client`.
+- **Client**: builds the browser bundle to `dist/client`.
 - **SSR**: defined under `environments.ssr` with `consumer: 'server'` and `build.ssr` pointing to
   `app/entry-server.tsx`. The `resolve.conditions` field can be adjusted to customise module resolution for server code.
 
 The `builder.buildApp` hook (available in Vite 7) coordinates building both environments together. In dev,
-`dev-server.ts` calls `createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {} } })`
-to spin up a Vite dev server. Fastify is created and `@fastify/middie` enables `.use()` so that the Vite middlewares can
-be mounted. A catch‑all route imports the SSR entry through `ssrEnv.runner.import`, calls the exported `renderRequest`
-with the request details and streams the HTML back.
+`dev-server.ts` calls
+`createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {}, client: {} } })` to spin
+up a Vite dev server for both client and SSR graphs. Fastify is created and `@fastify/middie` enables `.use()` so that
+the Vite middlewares can be mounted. A catch‑all route imports the SSR entry, calls the exported `renderRequest` with
+the request details and streams the HTML back.
 
 In production, `server/prod-server.ts` imports the compiled SSR handler from `dist/ssr/entry-server.js` and serves the
 client assets from `dist/client` via `@fastify/static`. This separation mirrors the dev environment but without the HMR
