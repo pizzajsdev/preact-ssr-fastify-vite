@@ -1,6 +1,7 @@
 # Vite Preact + Fastify SSR Template
 
-A template for a Preact + Fastify + SSR + Vite Environment API project.
+A template for a Preact + Fastify + SSR + Vite Environment API project. This is more a Proof of Concept to showcase what
+can you do with Vite's Environment API, e.g. having an entrypoint and different build per environment.
 
 This repository contains a **minimal full‑stack Preact SSR scaffold** built on top of the latest Vite _Environment API_
 (Vite 6/7). It demonstrates how to create a small Remix-like (aka. React Router v7) framework with file‑based routing,
@@ -15,7 +16,8 @@ Heavily inspired by [React Router v7](https://reactrouter.com/home), aka. Remix,
 structure.
 
 > NOTE: This project is experimental and not production ready. What's not supported yet: Static-site generation (SSG),
-> API routes, loader data revalidation and client re-hydration, throwing Response objects, and other features.
+> API routes, loader data revalidation and client re-hydration, throwing Response objects, .server/client.ts file
+> boundaries, not found page, error boundaries, and other features.
 
 ## Prerequisites
 
@@ -40,8 +42,8 @@ structure.
    ```
 
    The dev server spins up a Vite dev server in middleware mode and mounts it on a Fastify instance via
-   `@fastify/middie`【524026859404856†L63-L80】. Pages under `app/routes/` are server-rendered and hydrated on the
-   client, with HMR working for both server and client code.
+   `@fastify/middie`. Pages under `app/routes/` are server-rendered and hydrated on the client, with HMR working for
+   both server and client code.
 
 3. Build for production:
 
@@ -58,7 +60,7 @@ structure.
    ```
 
    The production server (`server/prod-server.mjs`) uses Fastify with `@fastify/static` to serve static assets and the
-   compiled SSR entry【600945108519848†L240-L281】.
+   compiled SSR entry.
 
 ## Project Structure
 
@@ -119,9 +121,9 @@ the client bundle.
 The `builder.buildApp` hook (available in Vite 7) coordinates building both environments together. In dev,
 `dev-server.mjs` calls
 `createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {} } })` to spin up a Vite dev
-server. Fastify is created and `@fastify/middie` enables `.use()` so that the Vite middlewares can be
-mounted【327211239283514†L200-L305】. A catch‑all route imports the SSR entry through `ssrEnv.runner.import`, calls the
-exported `renderRequest` with the request details and streams the HTML back.
+server. Fastify is created and `@fastify/middie` enables `.use()` so that the Vite middlewares can be mounted. A
+catch‑all route imports the SSR entry through `ssrEnv.runner.import`, calls the exported `renderRequest` with the
+request details and streams the HTML back.
 
 In production, `server/prod-server.mjs` imports the compiled SSR handler from `dist/ssr/entry-server.js` and serves the
 client assets from `dist/client` via `@fastify/static`. This separation mirrors the dev environment but without the HMR
@@ -132,7 +134,7 @@ and transform overhead.
 - **Preact instead of React** – Preact offers a smaller footprint while maintaining a similar API. Server rendering is
   handled via `preact-render-to-string`.
 - **Fastify over Express** – Fastify is chosen for performance and its plugin system. Integrating the Vite dev server
-  requires a middleware plugin (`@fastify/middie`) to attach connect-style middlewares【524026859404856†L63-L80】.
+  requires a middleware plugin (`@fastify/middie`) to attach connect-style middlewares.
 - **File‑based routing** – Simplifies adding pages: any `.tsx`/`.ts` file in `app/routes` becomes a route. The router
   supports dynamic segments and wildcard routes.
 - **Environment API** – Using Vite’s Environment API aligns dev and prod pipelines and allows running multiple

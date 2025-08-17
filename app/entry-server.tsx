@@ -90,8 +90,12 @@ export async function renderRequest(req: { url: string; method: string; headers:
   )
 
   // Determine which page component to render
-  const RootPage = rootModules.default ?? (() => h('div', null, 'Not Found'))
-  const CurrentPage = match?.route.mod.default ?? (() => h('div', null, 'Not Found'))
+  const RootLayout = (rootModules as any).Layout
+  if (!RootLayout) {
+    throw new Error('root.tsx Layout export not found')
+  }
+  const RootPage = (rootModules as any).default
+  const CurrentPage = match?.route.mod.default ?? (() => h('div', null, 'Page Not Found'))
 
   const rootLoaderData = typeof rootData === 'object' ? rootData : { rootLoaderData: rootData }
 
@@ -105,15 +109,21 @@ export async function renderRequest(req: { url: string; method: string; headers:
 
   // Render the application to a string.  Root wraps the page component and
   // supplies meta and data for the document head and layout.
-  const appHtml = render(h(RootPage, currentPageProps, h(CurrentPage, currentPageProps)))
+  const appHtml = render(
+    h(
+      RootLayout,
+      currentPageProps,
+      RootPage ? h(RootPage, currentPageProps, h(CurrentPage, currentPageProps)) : h(CurrentPage, currentPageProps),
+    ),
+  )
 
   // Serialize the data used for hydration.  Escape '<' to prevent script injection.
   const payload = JSON.stringify(currentPageProps).replace(/</g, '\\u003c')
 
-  // Inject the serialized data into the placeholder token within the script tag.
-  // The root component embeds '__SSR_DATA__' which we replace here with the
-  // JSON payload.  The client will parse this JSON to hydrate the application.
-  const finalHtml = '<!doctype html>' + appHtml.replace('__SSR_DATA__', payload)
+  // Inject the serialized data only; servers will handle asset tags.
+  const finalHtml =
+    '<!doctype html>' +
+    appHtml.replace('</body>', `<script id="__DATA" type="application/json">${payload}</script></body>`)
 
   return { status, headers, body: finalHtml }
 }

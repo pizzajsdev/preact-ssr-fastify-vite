@@ -1,79 +1,83 @@
-:root {
-  --bg: #0b0d10;
-  --bg-light: #16222c;
-  --fg: #e7edf3;
-  --muted: #9fb3c8;
-  --card: #11161c;
-  --acc: #6ee7ff;
-}
-* {
-  box-sizing: border-box;
-}
-html,
-body,
-#__doc {
-  height: 100%;
-}
-html {
-  color-scheme: dark;
-}
-body {
-  margin: 0;
-  background: radial-gradient(1200px 800px at 20% -10%, var(--bg-light), var(--bg));
-  color: var(--fg);
-  font:
-    14px/1.5 ui-sans-serif,
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    Ubuntu,
-    Cantarell,
-    Noto Sans,
-    Arial,
-    'Apple Color Emoji',
-    'Segoe UI Emoji';
-}
-a {
-  color: var(--acc);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-.container {
-  max-width: 860px;
-  margin: 48px auto;
-  padding: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
-}
-.h1 {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin: 0 0 8px;
-  background: linear-gradient(90deg, #fff, #8fe3ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.sub {
-  color: var(--muted);
-  margin: 0 0 20px;
-}
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #0e141b;
-  cursor: pointer;
-}
-.button:hover {
-  background: #0f1a24;
+@import 'tailwindcss';
+
+@layer base {
+  :root {
+    --bg: #0b0d10;
+    --bg-light: #16222c;
+    --fg: #e7edf3;
+    --muted: #9fb3c8;
+    --card: #11161c;
+    --acc: #6ee7ff;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body,
+  #__doc {
+    height: 100%;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 800px at 20% -10%, var(--bg-light), var(--bg));
+    color: var(--fg);
+    font:
+      14px/1.5 ui-sans-serif,
+      system-ui,
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Ubuntu,
+      Cantarell,
+      Noto Sans,
+      Arial,
+      'Apple Color Emoji',
+      'Segoe UI Emoji';
+  }
+  a {
+    color: var(--acc);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  .container {
+    max-width: 860px;
+    margin: 48px auto;
+    padding: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  }
+  .h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, #fff, #8fe3ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub {
+    color: var(--muted);
+    margin: 0 0 20px;
+  }
+  .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0e141b;
+    cursor: pointer;
+  }
+  .button:hover {
+    background: #0f1a24;
+  }
 }

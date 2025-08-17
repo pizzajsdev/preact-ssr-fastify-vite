@@ -2,10 +2,7 @@ import { h, hydrate, render } from 'preact'
 import RootPage from './root'
 import { matchRoute } from './router'
 
-// Important to import styles in your client entry file, otherwise Vite won't generate the CSS file.
-import './styles.css'
-
-// import 'vite/modulepreload-polyfill' // required when using a non‑HTML vite build entry (which is index.html by default)
+// import 'vite/modulepreload-polyfill' // required if you disable the auto‑injected vite modulepreload polyfill
 
 // Read the serialized data injected during SSR from the script tag.  If
 // parsing fails or the element is missing, fall back to basic defaults.
@@ -36,7 +33,11 @@ const CurrentPage = match?.route.mod.default ?? (() => h('div', null, 'Not Found
 
 // Hydrate the whole document.  We call hydrate() when the server has
 // pre-rendered DOM nodes, otherwise fall back to render() for CSR.
-const node = document.documentElement
+const node = document.getElementById('root')
+if (!node) {
+  throw new Error('No #root element found')
+}
+
 if (node.hasChildNodes()) {
   hydrate(h(RootPage, dataWithoutChildren, h(CurrentPage, dataWithoutChildren)), node)
 } else {

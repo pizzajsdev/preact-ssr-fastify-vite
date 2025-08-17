@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "node server/dev-server.mjs",
+    "build:clean": "rm -rf dist && pnpm build",
+    "dev": "node server/dev-server.mjs --open",
     "format": "prettier --write .",
     "lint": "prettier --check .",
     "prepare": "sort-package-json",

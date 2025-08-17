@@ -12,6 +12,14 @@ export default function Page({ loaderData }: Route.PageProps<typeof loader>) {
       <a class="button" href="/about">
         About →
       </a>
+      <button
+        class="button"
+        onClick={() => {
+          alert('clicked.')
+        }}
+      >
+        Click me
+      </button>
     </div>
   )
 }
