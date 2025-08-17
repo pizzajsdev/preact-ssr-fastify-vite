@@ -6,7 +6,7 @@ export type Loader<T = unknown> = (ctx: RequestContext) => Promise<T> | T
 export type Action<T = unknown> = (ctx: RequestContext) => Promise<T> | T
 
 export type RouteModule = {
-  default: (props: { data?: any; params: Record<string, string> }) => VNode<any>
+  default: (props: { data?: any; params: Record<string, string | string[]> }) => VNode<any>
   meta?: Meta
   loader?: Loader
   action?: Action
@@ -17,7 +17,7 @@ export type RouteModule = {
 // Request object for further data (e.g. headers, body).
 export type RequestContext = {
   url: URL
-  params: Record<string, string>
+  params: Record<string, string | string[]>
   request: Request
 }
 
@@ -31,8 +31,8 @@ function fileToPath(fp: string) {
   let p = fp.replace(/^\.\/routes/, '').replace(/\.(tsx|ts)$/, '')
   // '/users/index' -> '/users/'
   p = p.replace(/\/index$/, '/')
-  // '[id].tsx' -> ':id' and '[...all].tsx' -> '*'
-  p = p.replace(/\[(\.\.\.)?([^\]]+)\]/g, (_, rest, name) => (rest ? '*' : `:${name}`))
+  // '[id].tsx' -> ':id' and '[...segments].tsx' -> '*segments'
+  p = p.replace(/\[(\.\.\.)?([^\]]+)\]/g, (_: any, rest: string, name: string) => (rest ? `*${name}` : `:${name}`))
   if (!p.startsWith('/')) p = `/${p}`
   return p
 }
@@ -49,7 +49,7 @@ export const routes: Route[] = Object.entries(files).map(([key, mod]) => ({
 export function matchRoute(url: URL) {
   const pathname = url.pathname.endsWith('/') && url.pathname !== '/' ? url.pathname.slice(0, -1) : url.pathname
   for (const r of routes) {
-    const params: Record<string, string> = {}
+    const params: Record<string, string | string[]> = {}
     const a = pathname.split('/').filter(Boolean)
     const b = r.path.split('/').filter(Boolean)
     let ok = true
@@ -57,10 +57,13 @@ export function matchRoute(url: URL) {
     let bi = 0
     for (; ai < a.length && bi < b.length; ai++, bi++) {
       const seg = b[bi]
-      if (seg === '*') {
-        ok = true
+      if (seg.startsWith('*')) {
+        const name = seg.slice(1) || 'wildcard'
+        const restSegments = a.slice(ai).map((s) => decodeURIComponent(s))
+        params[name] = restSegments
         ai = a.length
         bi = b.length
+        ok = true
         break
       }
       if (seg.startsWith(':')) params[seg.slice(1)] = decodeURIComponent(a[ai])

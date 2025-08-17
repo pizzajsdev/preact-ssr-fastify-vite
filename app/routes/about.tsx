@@ -1,6 +1,6 @@
 export const meta = () => ({ title: 'About • Preact SSR' })
 
-export default function About() {
+export default function Page() {
   return (
     <div>
       <p class="sub">About page. Styling is plain CSS via Vite import.</p>

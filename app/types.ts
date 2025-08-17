@@ -5,9 +5,9 @@ declare global {
     // Context passed to server-only handlers.  This includes the URL of the
     // request, dynamic parameters extracted from the pathname, and the original
     // Request object for further data (e.g. headers, body).
-    export type Context = {
+    export type Context<Params extends Record<string, any> = Record<string, string | string[]>> = {
       url: URL
-      params: Record<string, string>
+      params: Params
       request: Request
     }
 
@@ -25,7 +25,7 @@ declare global {
     export type PageProps<
       LoaderFn extends () => any = () => any,
       ActionFn extends () => any = () => any,
-      Params extends Record<string, string> = Record<string, string>,
+      Params extends Record<string, any> = Record<string, string | string[]>,
     > = {
       url: SerializableURL
       loaderData: ReturnedData<LoaderFn>

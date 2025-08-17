@@ -12,6 +12,15 @@ export default function Page({ loaderData }: Route.PageProps<typeof loader>) {
       <a class="button" href="/about">
         About →
       </a>
+      <a class="button" href="/nested/example">
+        Nested route example →
+      </a>
+      <a class="button" href="/blog/helloworld">
+        Dynamic route example →
+      </a>
+      <a class="button" href="/catchall/hello/world/test">
+        Catch-all route example →
+      </a>
       <button
         class="button"
         onClick={() => {
