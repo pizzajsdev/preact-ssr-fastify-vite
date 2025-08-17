@@ -26,7 +26,7 @@ declare global {
     export type Loader<T = unknown> = (ctx: Context) => Promise<T> | T
     export type Action<T = unknown> = (ctx: Context) => Promise<T> | T
 
-    type ReturnedData<L extends () => any> = Awaited<ReturnType<L>>
+    type ReturnedData<L extends (...args: any[]) => any> = Awaited<ReturnType<L>>
 
     export type SerializableURL = {
       pathname: string
@@ -34,8 +34,8 @@ declare global {
     }
 
     export type PageProps<
-      LoaderFn extends () => any = () => any,
-      ActionFn extends () => any = () => any,
+      LoaderFn extends (...args: any[]) => any = (...args: any[]) => any,
+      ActionFn extends (...args: any[]) => any = (...args: any[]) => any,
       Params extends Record<string, any> = Record<string, string | string[]>,
     > = {
       url: SerializableURL

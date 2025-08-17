@@ -1,3 +1,4 @@
+import { cn } from './lib/utils'
 import styles from './styles.css?inline'
 
 // Data returned from the root loader.  You can extend this with more fields
@@ -13,7 +14,13 @@ export function loader() {
 // hydrate the client.  The `meta` prop comes from your page's `meta` export.
 // This export is required.
 export function Layout(props: Route.PageProps<typeof loader>) {
-  const { meta, loaderData } = props
+  const { meta, loaderData, url } = props
+  const pathname = url.pathname
+  const linkBase = cn('rounded-md px-3 py-2 text-sm')
+  const isActive = (href: string) => (pathname === '/' && href === '/') || (href !== '/' && pathname.startsWith(href))
+  const linkClass = (href: string) =>
+    cn(linkBase, isActive(href) ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/5')
+
   return (
     <html lang="en">
       <head>
@@ -30,6 +37,30 @@ export function Layout(props: Route.PageProps<typeof loader>) {
         <style dangerouslySetInnerHTML={{ __html: styles }} />
       </head>
       <body>
+        <header class="sticky top-0 z-50 border-b border-white/10 bg-black/30 backdrop-blur">
+          <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+            <a href="/" class="font-semibold tracking-tight">
+              {loaderData.appName}
+            </a>
+            <nav class="flex items-center gap-1">
+              <a href="/" class={linkClass('/')}>
+                Home
+              </a>
+              <a href="/about" class={linkClass('/about')}>
+                About
+              </a>
+              <a href="/nested/example" class={linkClass('/nested')}>
+                Nested
+              </a>
+              <a href="/blog/helloworld" class={linkClass('/blog')}>
+                Blog
+              </a>
+              <a href="/actions" class={linkClass('/actions')}>
+                Actions
+              </a>
+            </nav>
+          </div>
+        </header>
         {/* Similar to RR <Outlet />: */}
         <div id="root">{props.children}</div>
         {/* Similar to RR <Scripts />: */}

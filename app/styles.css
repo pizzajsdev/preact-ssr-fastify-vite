@@ -1,14 +1,24 @@
 @import 'tailwindcss';
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-light: var(--bg-light);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-acc: var(--acc);
+}
+
+:root {
+  --bg: #0b0d10;
+  --bg-light: #16222c;
+  --fg: #e7edf3;
+  --muted: #9fb3c8;
+  --card: #11161c;
+  --acc: #6ee7ff;
+}
+
 @layer base {
-  :root {
-    --bg: #0b0d10;
-    --bg-light: #16222c;
-    --fg: #e7edf3;
-    --muted: #9fb3c8;
-    --card: #11161c;
-    --acc: #6ee7ff;
-  }
   * {
     box-sizing: border-box;
   }
