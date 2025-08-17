@@ -5,9 +5,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const distClient = path.resolve(__dirname, '../dist/client')
-const distSSR = path.resolve(__dirname, '../dist/ssr')
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const isBuild = __filename.endsWith('server/index.js')
+const distPath = isBuild ? path.resolve(__dirname, '..') : path.resolve(__dirname, '../dist/server')
+const distClient = path.resolve(distPath, 'client')
+const distServer = path.resolve(distPath, 'server')
+
 const APP_URL = process.env.APP_URL || 'http://localhost'
 
 async function main() {
@@ -23,7 +27,7 @@ async function main() {
 
   // Lazy‑import the SSR handler
   const { renderRequest }: { renderRequest: SSRServer.RenderRequest } = await import(
-    path.join(distSSR, 'entry-server.js')
+    path.join(distServer, 'entry-server.js')
   )
 
   // Read Vite manifest to resolve hashed asset file names

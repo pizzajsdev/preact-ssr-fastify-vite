@@ -29,18 +29,39 @@ export default defineConfig(<UserConfig>{
     ssr: {
       consumer: 'server',
       build: {
-        outDir: 'dist/ssr',
+        outDir: 'dist/server',
         ssr: 'app/entry-server.tsx',
+        rollupOptions: {
+          output: { entryFileNames: 'entry-server.js' },
+        },
         copyPublicDir: false,
+        sourcemap: true,
+      },
+      resolve: { conditions: ['node', 'import', 'default'] },
+    },
+    // Build the production Fastify server into dist/server/index.js
+    fastify_server: {
+      consumer: 'server',
+      build: {
+        outDir: 'dist/server',
+        ssr: 'server/prod-server.ts',
+        rollupOptions: {
+          output: { entryFileNames: 'index.js' },
+        },
+        copyPublicDir: false,
+        // Avoid cleaning dist/server when building the server so entry-server.js stays
+        emptyOutDir: false,
         sourcemap: true,
       },
       resolve: { conditions: ['node', 'import', 'default'] },
     },
   },
   builder: {
-    // Build client and SSR outputs together when running `vite build`
+    // Build client, SSR entry, and the Node server when running `vite build` in sequential order
     async buildApp(b) {
-      await Promise.all([b.build(b.environments.client), b.build(b.environments.ssr)])
+      await b.build(b.environments.client)
+      await b.build(b.environments.ssr)
+      await b.build(b.environments.fastify_server)
     },
   },
 })

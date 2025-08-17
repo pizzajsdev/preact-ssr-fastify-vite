@@ -9,7 +9,7 @@
     "format": "prettier --write .",
     "lint": "prettier --check .",
     "prepare": "sort-package-json",
-    "preview": "node server/prod-server.ts",
+    "preview": "node dist/server/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
