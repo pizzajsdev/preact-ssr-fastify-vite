@@ -5,7 +5,7 @@
   "scripts": {
     "build": "vite build",
     "build:clean": "rm -rf dist && pnpm build",
-    "dev": "node server/dev-server.ts --open",
+    "dev": "node server/dev-server.ts",
     "format": "prettier --write .",
     "lint": "prettier --check .",
     "prepare": "sort-package-json",

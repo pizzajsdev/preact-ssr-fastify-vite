@@ -1,4 +1,4 @@
-# Vite Preact + Fastify SSR Template
+# Preact + Fastify SSR + Vite Environment API
 
 A template for a Preact + Fastify + SSR + Vite Environment API project. This is more a Proof of Concept to showcase what
 can you do with Vite's Environment API, e.g. having an entrypoint and different build per environment.
@@ -21,8 +21,7 @@ structure.
 
 ## Prerequisites
 
-- Node.js 18+ with `npm` or `pnpm`.
-- Internet access to install dependencies.
+- Node.js 22.15+ with `pnpm`.
 
 ## Getting Started
 
@@ -30,15 +29,12 @@ structure.
 
    ```bash
    pnpm install
-   # or
-   npm install
    ```
 
 2. Start the development server:
 
    ```bash
-   pnpm dev
-   # open http://localhost:5173
+   pnpm dev --open
    ```
 
    The dev server spins up a Vite dev server in middleware mode and mounts it on a Fastify instance via
@@ -59,7 +55,7 @@ structure.
    # open http://localhost:4173
    ```
 
-   The production server (`server/prod-server.mjs`) uses Fastify with `@fastify/static` to serve static assets and the
+   The production server (`server/prod-server.ts`) uses Fastify with `@fastify/static` to serve static assets and the
    compiled SSR entry.
 
 ## Project Structure
@@ -71,8 +67,8 @@ preact-fastify-ssr/
 ├─ vite.config.ts        # Vite config using Environment API
 ├─ tsconfig.json         # TypeScript config
 ├─ server/
-│  └─ dev-server.mjs     # Dev server mounting Vite on Fastify
-│  └─ prod-server.mjs    # Production Fastify server
+│  └─ dev-server.ts     # Dev server mounting Vite on Fastify
+│  └─ prod-server.ts    # Production Fastify server
 └─ app/
    ├─ root.tsx           # HTML document/layout (with optional loader/action)
    ├─ router.ts          # File-based router & dynamic path matching
@@ -106,9 +102,9 @@ matcher for static, dynamic and wildcard segments.
 ### Root Document
 
 `app/root.tsx` defines the HTML skeleton of every page. It may export a `loader` and `action` like route modules. The
-default export receives `{ url, meta, children, data }` and returns `<html>`, `<head>` and `<body>` elements. Global
-styles are imported here via `import './styles.css'`; Vite automatically processes CSS imports and extracts them into
-the client bundle.
+default export receives `{ url, meta, children, loaderData, actionData }` and returns `<html>`, `<head>` and `<body>`
+elements. Global styles are imported here via `import './styles.css'`; Vite automatically processes CSS imports and
+extracts them into the client bundle.
 
 ### Environment API & Server Integration
 
@@ -119,13 +115,12 @@ the client bundle.
   `app/entry-server.tsx`. The `resolve.conditions` field can be adjusted to customise module resolution for server code.
 
 The `builder.buildApp` hook (available in Vite 7) coordinates building both environments together. In dev,
-`dev-server.mjs` calls
-`createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {} } })` to spin up a Vite dev
-server. Fastify is created and `@fastify/middie` enables `.use()` so that the Vite middlewares can be mounted. A
-catch‑all route imports the SSR entry through `ssrEnv.runner.import`, calls the exported `renderRequest` with the
-request details and streams the HTML back.
+`dev-server.ts` calls `createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {} } })`
+to spin up a Vite dev server. Fastify is created and `@fastify/middie` enables `.use()` so that the Vite middlewares can
+be mounted. A catch‑all route imports the SSR entry through `ssrEnv.runner.import`, calls the exported `renderRequest`
+with the request details and streams the HTML back.
 
-In production, `server/prod-server.mjs` imports the compiled SSR handler from `dist/ssr/entry-server.js` and serves the
+In production, `server/prod-server.ts` imports the compiled SSR handler from `dist/ssr/entry-server.js` and serves the
 client assets from `dist/client` via `@fastify/static`. This separation mirrors the dev environment but without the HMR
 and transform overhead.
 
