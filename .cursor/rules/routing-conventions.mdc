@@ -1,0 +1,35 @@
+---
+globs: app/routes/**/*.ts,app/routes/**/*.tsx,app/router.ts,app/root.tsx
+---
+
+### File-based routing rules
+
+- Route files live under `app/routes/`.
+- Filenames map to URL paths via [app/router.ts](mdc:app/router.ts):
+  - `index.tsx` → `/`
+  - `about.tsx` → `/about`
+  - `folder/index.tsx` → `/folder/`
+  - `[id].tsx` → `:id` dynamic segment
+  - `[...all].tsx` → `*` wildcard
+
+Required/optional exports per route module:
+
+- `default` (required): Preact component. It receives `Route.PageProps<typeof loader, typeof action>`.
+- `loader?` (server-only): `(ctx: Route.Context) => data | Promise<data>`.
+- `action?` (server-only): `(ctx: Route.Context) => data | Promise<data>`.
+- `meta?` (server-only): `(ctx: Route.Context) => Record<string,string>`.
+
+Meta keys used by [app/root.tsx](mdc:app/root.tsx):
+
+- `title`, `description`, `robots`, `canonical`, `ogTitle`, `ogImage`.
+
+Do:
+
+- Default‑export the page component from each route file.
+- Use `export const loader = ...` and `export const action = ...` for server handlers.
+- Type props with `Route.PageProps<typeof loader, typeof action>`.
+
+Avoid:
+
+- Accessing `window`/`document` in `loader`/`action`/`meta` (they run on the server).
+- Introducing client routers; this scaffold does SSR + minimal client navigation.

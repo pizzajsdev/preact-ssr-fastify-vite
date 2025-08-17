@@ -1,0 +1,19 @@
+---
+globs: *.ts,*.tsx
+---
+
+### Preact + SSR coding standards
+
+- Prefer Preact APIs: import from `preact` and `preact-render-to-string`; do not add React/Remix/React Router.
+- Use `class` in JSX instead of `className`.
+- Keep components as pure functions; avoid side effects at module scope.
+- Hydration data is serialized into a `<script id="__DATA">` tag by [app/entry-server.tsx](mdc:app/entry-server.tsx) and
+  read in [app/entry-client.tsx](mdc:app/entry-client.tsx). When adding new fields to `PageProps`, ensure they are
+  JSON-serializable.
+- For types, use the global `Route.*` types declared in [app/types.ts](mdc:app/types.ts).
+- Keep server-only code behind `loader`/`action`/`meta`. Guard browser APIs when code may run during SSR.
+
+Styling:
+
+- Global CSS is imported via [app/root.tsx](mdc:app/root.tsx) from `app/styles.css`. Tailwind v4 plugin is configured in
+  Vite; you can use utility classes directly.

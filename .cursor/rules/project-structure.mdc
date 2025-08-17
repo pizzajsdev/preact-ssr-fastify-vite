@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+### Project structure and SSR overview
+
+This project is a minimal Preact SSR scaffold powered by Vite's Environment API and Fastify. Start by reading:
+
+- [README.md](mdc:README.md)
+- [vite.config.ts](mdc:vite.config.ts)
+- [server/dev-server.ts](mdc:server/dev-server.ts)
+- [server/prod-server.ts](mdc:server/prod-server.ts)
+- [app/router.ts](mdc:app/router.ts)
+- [app/root.tsx](mdc:app/root.tsx)
+
+Key facts:
+
+- Pages live in `app/routes/`. Each file becomes a route and may export `loader`, `action`, `meta`, and a default Preact
+  component.
+- The SSR entry is [app/entry-server.tsx](mdc:app/entry-server.tsx) and the client entry is
+  [app/entry-client.tsx](mdc:app/entry-client.tsx).
+- The dev server mounts Vite middlewares on Fastify; all unmatched requests are rendered via the SSR entry.
+- In prod, assets are served from `dist/client` and HTML is rendered by `dist/ssr/entry-server.js`, with the client
+  entry and CSS injected using the Vite manifest.
+
+Conventions:
+
+- Use Preact, not React. Do not introduce other routing libraries.
+- Use `class` for CSS classes in JSX (Preact), not `className`.
+- Use functional components, not class components, and hooks for lifecycle methods.
+- Keep server-only logic in `loader`/`action` and avoid accessing browser globals during SSR.
+
+Commands (pnpm):
+
+- `pnpm dev --open` – run Fastify + Vite in dev.
+- `pnpm build` – build client and SSR outputs.
+- `pnpm preview` – run the production Fastify server.

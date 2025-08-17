@@ -1,0 +1,30 @@
+---
+globs: app/types.ts,app/**/*.tsx
+---
+
+### Route types and page props
+
+Use the global `Route` namespace types declared in [app/types.ts](mdc:app/types.ts):
+
+- `Route.Context` – passed to `loader`/`action`/`meta`.
+- `Route.Loader<T>` / `Route.Action<T>` – handler signatures.
+- `Route.PageProps<LoaderFn, ActionFn, Params>` – props passed to `Layout`, `Page`, and route components.
+
+Typing examples:
+
+```tsx
+export const loader = (ctx: Route.Context) => ({ message: 'hi' })
+
+export default function Page(props: Route.PageProps<typeof loader>) {
+  return <p class="sub">{props.loaderData.message}</p>
+}
+```
+
+Route meta example (keys consumed by the root layout):
+
+```ts
+export const meta: Route.Meta = () => ({
+  title: 'Page Title',
+  description: 'Optional description',
+})
+```
