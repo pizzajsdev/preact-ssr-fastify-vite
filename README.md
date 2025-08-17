@@ -37,9 +37,9 @@ structure.
    pnpm dev --open
    ```
 
-   The dev server spins up a Vite dev server in middleware mode and mounts it on a Fastify instance via
-   `@fastify/middie`. Pages under `app/routes/` are server-rendered and hydrated on the client, with HMR working for
-   both server and client code.
+   Dev runs the Vite server and a custom dev plugin (`server/dev-server.ts`) that SSRs unmatched HTML routes using the
+   SSR environment. Vite handles assets, HMR and open-in-browser for you.
+   - Set `APP_URL` to control the server URL base used during SSR (defaults to `http://localhost`).
 
 3. Build for production:
 
@@ -67,7 +67,7 @@ preact-ssr-fastify-vite/
 ├─ vite.config.ts        # Vite config using Environment API
 ├─ tsconfig.json         # TypeScript config
 ├─ server/
-│  └─ dev-server.ts     # Dev server mounting Vite on Fastify
+│  └─ dev-server.ts     # Vite dev plugin (SSR fallback + HMR integration)
 │  └─ prod-server.ts    # Production Fastify server
 └─ app/
    ├─ root.tsx           # HTML document/layout (with optional loader/action)
@@ -116,12 +116,9 @@ automatically processes CSS imports and extracts them into the client bundle.
 - **SSR**: defined under `environments.ssr` with `consumer: 'server'` and `build.ssr` pointing to
   `app/entry-server.tsx`. The `resolve.conditions` field can be adjusted to customise module resolution for server code.
 
-The `builder.buildApp` hook (available in Vite 7) coordinates building both environments together. In dev,
-`dev-server.ts` calls
-`createServer({ server: { middlewareMode: true }, appType: 'custom', environments: { ssr: {}, client: {} } })` to spin
-up a Vite dev server for both client and SSR graphs. Fastify is created and `@fastify/middie` enables `.use()` so that
-the Vite middlewares can be mounted. A catch‑all route imports the SSR entry, calls the exported `renderRequest` with
-the request details and streams the HTML back.
+The `builder.buildApp` hook (available in Vite 7) coordinates building both environments together. In dev, a Vite plugin
+(`server/dev-server.ts`) handles SSR for HTML routes and lets Vite serve assets/HMR. The plugin dynamically imports the
+SSR entry on each request and calls the exported `renderRequest(request: Request) => Promise<Response>`.
 
 In production, `server/prod-server.ts` imports the compiled SSR handler from `dist/ssr/entry-server.js` and serves the
 client assets from `dist/client` via `@fastify/static`. This separation mirrors the dev environment but without the HMR
@@ -131,28 +128,15 @@ and transform overhead.
 
 - **Preact instead of React** – Preact offers a smaller footprint while maintaining a similar API. Server rendering is
   handled via `preact-render-to-string`.
-- **Fastify over Express** – Fastify is chosen for performance and its plugin system. Integrating the Vite dev server
-  requires a middleware plugin (`@fastify/middie`) to attach connect-style middlewares.
+- **Fastify over Express** – Fastify is chosen for performance and its plugin system. Dev uses a Vite middleware plugin
+  instead of mounting Vite on Fastify; prod uses Fastify.
 - **File‑based routing** – Simplifies adding pages: any `.tsx`/`.ts` file in `app/routes` becomes a route. The router
   supports dynamic segments and wildcard routes.
 - **Environment API** – Using Vite’s Environment API aligns dev and prod pipelines and allows running multiple
-  environments from a single dev server. The SSR environment defines its own build config and runner; the dev server
-  uses `RunnableDevEnvironment` to import and hot-reload server code.
+  environments from a single dev server. The SSR environment defines its own build config and runner.
 - **Minimal dependencies** – Beyond Vite, Preact and Fastify, there are no extra libraries. Routing, data fetching and
   actions are implemented manually to keep the scaffold lean and instructive.
 
-## Customisation & Extensibility
+### Environment Variables
 
-This scaffold is intentionally minimal. To extend it:
-
-- Add new pages in `app/routes/` following the naming conventions.
-- Implement more advanced routing (e.g., nested layouts) by enhancing `app/router.ts`.
-- Add client‑side navigation without page reloads by replacing the simple `location.reload()` in `entry-client.tsx` with
-  a proper client router.
-- Integrate a database or API in `loader`/`action` functions to fetch or mutate data.
-- Adjust styling by editing `app/styles.css` or importing additional CSS files. Vite will bundle them automatically.
-
-For further performance or deployment targets (e.g., edge workers), explore Vite’s custom environment runners and adapt
-the SSR environment accordingly.
-
----
+- `APP_URL`: Base URL used during SSR to resolve relative request URLs. Defaults to `http://localhost`.

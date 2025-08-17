@@ -1,11 +1,12 @@
 ---
-globs: server/**/*.ts,vite.config.ts,package.json
+globs: server/**/*.ts,vite.config.ts,package.json,app/entry-server.tsx
 ---
 
 ### Build, dev, and production serving
 
-- Dev server: [server/dev-server.ts](mdc:server/dev-server.ts) creates a Vite dev server (middleware mode) and mounts it
-  on Fastify with `@fastify/middie`. It dynamically imports the SSR entry for each request.
+- Dev server: [server/dev-server.ts](mdc:server/dev-server.ts) is a Vite dev plugin that SSRs unmatched HTML routes
+  using the `ssr` environment. Vite serves assets/HMR and opens the browser. The plugin dynamically imports the SSR
+  entry (`app/entry-server.tsx`) on each request and calls `renderRequest(request: Request) => Promise<Response>`.
 - Production server: [server/prod-server.ts](mdc:server/prod-server.ts) serves `dist/client` and renders HTML via
   `dist/ssr/entry-server.js`. It reads the Vite manifest to inject the built client entry and CSS.
 - Vite environments: configured in [vite.config.ts](mdc:vite.config.ts) with `client` and `ssr` builds and a coordinated
@@ -13,7 +14,7 @@ globs: server/**/*.ts,vite.config.ts,package.json
 
 Commands (pnpm):
 
-- `pnpm dev --open` – development server with HMR.
+- `pnpm dev --open` – Vite dev server with SSR plugin and HMR.
 - `pnpm build` – build client and SSR artifacts to `dist/`.
 - `pnpm preview` – run the production Fastify server over the built output.
 
@@ -21,3 +22,4 @@ Notes:
 
 - Do not hardcode asset filenames in prod; always resolve via the manifest as done in `server/prod-server.ts`.
 - When editing SSR/dev server behavior, avoid caching `vite.environments.ssr`; fetch it fresh on each request.
+- `renderRequest` accepts a standard `Request` and must return a `Response` in both dev and prod.

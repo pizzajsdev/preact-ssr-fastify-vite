@@ -1,139 +1,113 @@
-import middie from '@fastify/middie'
-import fastifyStatic from '@fastify/static'
-import type { FastifyReply, FastifyRequest } from 'fastify'
-import fastify from 'fastify'
-import { exec } from 'node:child_process'
+import { createRequest } from '@remix-run/node-fetch-server'
+import fs from 'node:fs'
 import path from 'node:path'
-import { createServer, isRunnableDevEnvironment } from 'vite'
+import { isRunnableDevEnvironment, type Plugin, type ResolvedConfig } from 'vite'
+
+const APP_URL = process.env.APP_URL || 'http://localhost'
 
 /**
- * This script starts a development server using Fastify and Vite's Environment
- * API.  It runs a single Vite dev server hosting both the client and the
- * SSR environment, mounts Vite's middlewares on Fastify via middie for
- * HMR and asset serving, and delegates all requests to the SSR renderer.
+ * A generic SSR dev server plugin for Vite.
+ *
+ * It requires a server entry point (at app/entry-server.tsx) with a `renderRequest` export
+ * function with signature `(req: Request) => Promise<Response>`
  */
-async function main() {
-  // Parse CLI flags (support --open[=path] or -o[=path])
-  let openFlag = false
-  let openPath = ''
-  for (let i = 2; i < process.argv.length; i++) {
-    const arg = process.argv[i]
-    if (arg === '--open' || arg === '-o') {
-      openFlag = true
-      const next = process.argv[i + 1]
-      if (next && !next.startsWith('-')) {
-        openPath = next
-        i++
+export default function vitePluginSsrDevServer(): Plugin {
+  let resolvedConfig: ResolvedConfig
+  return {
+    name: 'ssr-dev-server',
+    apply: 'serve',
+    enforce: 'post',
+    configResolved(config) {
+      resolvedConfig = config
+    },
+    handleHotUpdate({ server, modules }) {
+      const touchesSSR = modules.some((m: any) => (m as any)?._ssrModule)
+      if (touchesSSR) {
+        server.ws.send({ type: 'full-reload' })
+        return []
       }
-    } else if (arg.startsWith('--open=')) {
-      openFlag = true
-      openPath = arg.split('=')[1] || ''
-    } else if (arg.startsWith('-o=')) {
-      openFlag = true
-      openPath = arg.split('=')[1] || ''
-    }
-  }
+      return modules
+    },
+    configureServer(server) {
+      const isAppFile = (file: string) => file.split('\\').join('/').includes('/app/')
+      server.watcher.on('change', (file) => isAppFile(file) && server.ws.send({ type: 'full-reload' }))
+      server.watcher.on('add', (file) => isAppFile(file) && server.ws.send({ type: 'full-reload' }))
+      server.watcher.on('unlink', (file) => isAppFile(file) && server.ws.send({ type: 'full-reload' }))
 
-  // Create a Vite dev server in middleware mode.  We declare an additional
-  // environment named `ssr` so that Vite builds an SSR graph alongside the
-  // client graph.  Vite's middlewares handle transforming and serving files.
-  const vite = await createServer({
-    server: { middlewareMode: true },
-    appType: 'custom',
-    environments: { ssr: {}, client: {} },
-  })
+      server.middlewares.use(async (req, res, next) => {
+        try {
+          if (!req.url) return next()
+          const url = req.url
+          const method = (req.method || 'GET').toUpperCase()
 
-  // NOTE: Do not cache the SSR environment. Vite recreates environments on
-  // config changes/restart, so holding a stale reference leads to
-  // "Vite module runner has been closed". Always fetch from `vite.environments`.
-  // const ssrEnv = vite.environments.ssr // don't cache this here
+          // If the requested file exists under public/, let Vite serve it
+          if ((resolvedConfig as any)?.publicDir) {
+            const rawPath = url.split('?')[0] || '/'
+            const rel = rawPath.replace(/^\/+/, '')
+            const pubRoot = path.resolve((resolvedConfig as any).publicDir)
+            const abs = path.resolve(pubRoot, rel)
+            if (abs.startsWith(pubRoot) && fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+              return next()
+            }
+          }
 
-  // Spin up a Fastify server
-  const app = fastify()
-  // Register middie to enable Express/Connect-style middleware usage
-  await app.register(middie)
+          // Skip Vite internals and common asset routes (any method)
+          if (
+            /^\/@.+$/.test(url) ||
+            /\?t=\d+$/i.test(url) ||
+            /^\/favicon\.ico$/i.test(url) ||
+            /^\/static\/.+/.test(url) ||
+            /^\/node_modules\//.test(url) ||
+            /\.(js|mjs|jsx|ts|tsx|css|map|json|png|jpe?g|gif|svg|ico|webp|avif|wasm|txt|woff2?|ttf|eot|mp4|mp3)(\?|$)/i.test(
+              url,
+            )
+          ) {
+            return next()
+          }
 
-  // Serve files from /public (e.g., /favicon.ico). Vite also serves public,
-  // but this guarantees availability even when not intercepted by Vite.
-  await app.register(fastifyStatic, {
-    root: path.resolve(process.cwd(), 'public'),
-    prefix: '/',
-    decorateReply: false,
-    wildcard: false,
-  })
+          // For GET/HEAD only SSR HTML document requests; non-GET methods always SSR so actions run
+          if (method === 'GET' || method === 'HEAD') {
+            const accept = (req.headers['accept'] || '') as string
+            const isHtmlRequest = accept.includes('text/html') || accept === ''
+            if (!isHtmlRequest) return next()
+          }
 
-  // Mount Vite's connect middleware so HMR and transformed assets are handled.
-  app.use(vite.middlewares)
+          const env = server.environments.ssr
+          if (!isRunnableDevEnvironment(env)) {
+            throw new Error('SSR environment must be runnable in dev')
+          }
+          if (!env || env.name !== 'ssr' || !env.runner) return next()
+          const { renderRequest }: { renderRequest: SSRServer.RenderRequest } =
+            await env.runner.import('/app/entry-server.tsx')
 
-  // Fallback to SSR for anything not served above (static/assets).
-  app.setNotFoundHandler(async (req: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Always fetch the current SSR environment and import the entry.
-      const env = vite.environments.ssr
-      if (!isRunnableDevEnvironment(env)) {
-        throw new Error('SSR environment must be runnable in dev')
-      }
-      const { renderRequest } = await env.runner.import('/app/entry-server.tsx')
+          const fullReqUrl = new URL(url, APP_URL)
+          const nativeRequest = createRequest(req, res, { host: fullReqUrl.host, protocol: fullReqUrl.protocol })
+          const renderResponse = await renderRequest(nativeRequest)
 
-      // Render our app HTML
-      const out = await renderRequest({
-        url: (req.raw as any).url,
-        method: (req.raw as any).method,
-        headers: req.headers as any,
+          let html = await server.transformIndexHtml(url, await renderResponse.text())
+
+          // Ensure Vite client is present for HMR when rendering custom HTML
+          if (!html.includes('/@vite/client')) {
+            const csp = String(
+              renderResponse.headers.get('content-security-policy') ||
+                renderResponse.headers.get('Content-Security-Policy') ||
+                '',
+            )
+            const nonceMatch = csp.match(/'nonce-([^']+)'/)
+            const nonceAttr = nonceMatch ? ` nonce="${nonceMatch[1]}"` : ''
+            const clientTag = `<script type="module"${nonceAttr}>import('/@vite/client')</script>`
+            html = html.replace(/<\/body>/i, `${clientTag}</body>`) || html + clientTag
+          }
+
+          renderResponse.headers.forEach((v, k) => res.setHeader(k, v as any))
+          res.statusCode = renderResponse.status
+          res.setHeader('Content-Type', 'text/html')
+          res.end(html)
+        } catch (err) {
+          server.ssrFixStacktrace(err as Error)
+          next(err as any)
+        }
       })
-      // Ask Vite to transform the HTML (inject preloads, CSS, module scripts)
-      const transformed = await vite.transformIndexHtml((req.raw as any).url, out.body)
-      // Apply returned headers and status code
-      for (const [k, v] of out.headers) {
-        reply.header(k, v as any)
-      }
-
-      // Show moduleGraph of the root file:
-      // console.log('moduleGraph', await vite.environments.ssr.moduleGraph.getModuleByUrl('/app/root.tsx'))
-      reply.code(out.status).send(transformed)
-    } catch (err: any) {
-      // Fix stack trace to map back to source modules using Vite utilities
-      vite.ssrFixStacktrace(err)
-      reply.code(500).send(String(err?.stack || err))
-    }
-  })
-
-  // When server-only modules (loaders/actions/root/router) change, force a full reload
-  const shouldFullReload = (file: string) => {
-    const rel = path.relative(process.cwd(), file).split('\\').join('/')
-    return rel.startsWith('app/')
-    // || rel === 'app/root.tsx' ||
-    // rel === 'app/router.ts' ||
-    // rel === 'app/entry-server.tsx'
-  }
-  vite.watcher.on('change', (file) => {
-    if (shouldFullReload(file)) vite.ws.send({ type: 'full-reload' })
-  })
-  vite.watcher.on('add', (file) => {
-    if (shouldFullReload(file)) vite.ws.send({ type: 'full-reload' })
-  })
-  vite.watcher.on('unlink', (file) => {
-    if (shouldFullReload(file)) vite.ws.send({ type: 'full-reload' })
-  })
-
-  const port = Number(process.env.PORT || 5173)
-  await app.listen({ port })
-  console.log(`dev ready on http://localhost:${port}`)
-
-  if (openFlag) {
-    const target = `http://localhost:${port}${openPath ? (openPath.startsWith('/') ? openPath : '/' + openPath) : ''}`
-    // Cross-platform open
-    const cmd =
-      process.platform === 'darwin'
-        ? `open "${target}"`
-        : process.platform === 'win32'
-          ? `start ${target}`
-          : `xdg-open "${target}"`
-    exec(cmd, (err: Error | null) => err && console.error('Failed to open browser:', (err as any).message))
+    },
   }
 }
-
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})

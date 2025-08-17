@@ -1,4 +1,5 @@
 import fastifyStatic from '@fastify/static'
+import { createRequest } from '@remix-run/node-fetch-server'
 import fastify from 'fastify'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -7,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distClient = path.resolve(__dirname, '../dist/client')
 const distSSR = path.resolve(__dirname, '../dist/ssr')
+const APP_URL = process.env.APP_URL || 'http://localhost'
 
 async function main() {
   const app = fastify()
@@ -20,7 +22,9 @@ async function main() {
   })
 
   // Lazy‑import the SSR handler
-  const { renderRequest } = await import(path.join(distSSR, 'entry-server.js'))
+  const { renderRequest }: { renderRequest: SSRServer.RenderRequest } = await import(
+    path.join(distSSR, 'entry-server.js')
+  )
 
   // Read Vite manifest to resolve hashed asset file names
   const manifestPath = path.join(distClient, '.vite', 'manifest.json')
@@ -32,14 +36,14 @@ async function main() {
   // Use a custom 404 handler to render SSR for anything not served above
   app.setNotFoundHandler(async (req, reply) => {
     try {
-      const out = await renderRequest({
-        url: (req.raw as any).url,
-        method: (req.raw as any).method,
-        headers: req.headers as any,
-      })
+      const fullReqUrl = new URL(req.raw.url || '', APP_URL)
+      const nativeReq = createRequest(req.raw, reply.raw, { host: fullReqUrl.host, protocol: fullReqUrl.protocol })
+      const renderResponse = await renderRequest(nativeReq)
+      let html = await renderResponse.text()
+
       // Inject CSS before </head> (case-insensitive)
       const cssTags = cssAssets.map((href) => `<link rel="stylesheet" href="/${href}"></link>`).join('')
-      let html = out.body.replace(/<\/head>/i, `${cssTags}</head>`) || out.body
+      html = html.replace(/<\/head>/i, `${cssTags}</head>`) || html
 
       // Replace the entry script src robustly (handle formatting/attribute order)
       const scriptRe = /(\<script\b[^>]*\bsrc\s*=\s*)([\"'])\/app\/entry-client\.tsx\2([^>]*>)/i
@@ -49,8 +53,9 @@ async function main() {
         // Fallback: inject built entry before </body> if no dev entry script found
         html = html.replace(/<\/body>/i, `<script type="module" src="/${moduleEntry}"></script></body>`) || html
       }
-      for (const [k, v] of out.headers) reply.header(k, v)
-      reply.code(out.status).send(html)
+
+      renderResponse.headers.forEach((v, k) => reply.header(k, v))
+      reply.code(renderResponse.status).send(html)
     } catch (err: any) {
       reply.code(500).send(String(err?.stack || err))
     }

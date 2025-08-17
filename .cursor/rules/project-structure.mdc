@@ -19,7 +19,7 @@ Key facts:
   component.
 - The SSR entry is [app/entry-server.tsx](mdc:app/entry-server.tsx) and the client entry is
   [app/entry-client.tsx](mdc:app/entry-client.tsx).
-- The dev server mounts Vite middlewares on Fastify; all unmatched requests are rendered via the SSR entry.
+- In dev, a Vite plugin handles SSR for HTML routes; assets and HMR are served by Vite.
 - In prod, assets are served from `dist/client` and HTML is rendered by `dist/ssr/entry-server.js`, with the client
   entry and CSS injected using the Vite manifest.
 

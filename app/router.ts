@@ -1,29 +1,6 @@
-import type { VNode } from 'preact'
-
-// Define the types for server-only handlers that route modules may export.
-export type Meta = (ctx: RequestContext) => Record<string, string> | undefined
-export type Loader<T = unknown> = (ctx: RequestContext) => Promise<T> | T
-export type Action<T = unknown> = (ctx: RequestContext) => Promise<T> | T
-
-export type RouteModule = {
-  default: (props: { data?: any; params: Record<string, string | string[]> }) => VNode<any>
-  meta?: Meta
-  loader?: Loader
-  action?: Action
-}
-
-// Context passed to server-only handlers.  This includes the URL of the
-// request, dynamic parameters extracted from the pathname, and the original
-// Request object for further data (e.g. headers, body).
-export type RequestContext = {
-  url: URL
-  params: Record<string, string | string[]>
-  request: Request
-}
-
 // Eagerly import every file within app/routes as a route module.  Vite's
 // import.meta.glob resolves relative to the importing file.
-const files = import.meta.glob('./routes/**/*.{tsx,ts}', { eager: true }) as Record<string, RouteModule>
+const files = import.meta.glob('./routes/**/*.{tsx,ts}', { eager: true }) as Record<string, Route.RouteModule>
 
 // Convert the file system path of a route module into a URL path.  For
 // example './routes/index.tsx' -> '/', and './routes/users/[id].tsx' -> '/users/:id'.
@@ -37,7 +14,7 @@ function fileToPath(fp: string) {
   return p
 }
 
-export type Route = { path: string; mod: RouteModule }
+export type Route = { path: string; mod: Route.RouteModule }
 export const routes: Route[] = Object.entries(files).map(([key, mod]) => ({
   path: fileToPath(key),
   mod,

@@ -1,33 +1,31 @@
 import { h } from 'preact'
 import { render } from 'preact-render-to-string'
 import * as rootModules from './root'
-import { matchRoute, type RequestContext } from './router'
+import { matchRoute } from './router'
+
+const APP_URL = process.env.APP_URL || 'http://localhost'
 
 // Helper to safely invoke server-only exports.  It returns undefined when
 // the handler is not defined.
-async function runServerHandler<T>(fn: any | undefined, ctx: RequestContext): Promise<T | undefined> {
+async function runServerHandler<T>(fn: any | undefined, ctx: Route.Context): Promise<T | undefined> {
   if (!fn) return undefined
   return await fn(ctx)
 }
 
-export async function renderRequest(req: { url: string; method: string; headers: any }): Promise<{
-  status: number
-  headers: [string, string][]
-  body: string
-}> {
-  // Build a URL object; base isn't used for relative paths but required by URL constructor
-  const url = new URL(req.url, 'http://localhost')
+export const renderRequest: SSRServer.RenderRequest = async (request: Request): Promise<Response> => {
+  // Build a URL object; base is used when URL is relative
+  const url = new URL(request.url, APP_URL)
   const match = matchRoute(url)
 
   let status = 200
-  const headers: [string, string][] = [['Content-Type', 'text/html; charset=utf-8']]
+  const extraHeaders: [string, string][] = []
 
   // Call the root loader to fetch application-wide data
   const rootData = rootModules.loader
     ? await runServerHandler(rootModules.loader, {
         url,
         params: {},
-        request: new Request(url, { method: req.method, headers: req.headers }),
+        request,
       })
     : {}
 
@@ -35,10 +33,10 @@ export async function renderRequest(req: { url: string; method: string; headers:
     status = 404
   }
 
-  const ctx: RequestContext = {
+  const ctx: Route.Context = {
     url,
     params: match?.params ?? {},
-    request: new Request(url, { method: req.method, headers: req.headers }),
+    request,
   }
 
   // Execute the action on POST/PUT/DELETE/PATCH or the loader on other methods
@@ -50,36 +48,23 @@ export async function renderRequest(req: { url: string; method: string; headers:
     actionData: {},
   }
 
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method.toUpperCase()) && match?.route.mod.action) {
+  const method = request.method.toUpperCase()
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && match?.route.mod.action) {
     pageData.actionData = await runServerHandler(match.route.mod.action, ctx)
     // Similar to how React Router v7 does it, we re-run the loader to get the latest data after the action.
     pageData.loaderData = await runServerHandler(match.route.mod.loader, ctx)
-    headers.push(['X-Action', '1'])
+    extraHeaders.push(['X-Action', '1'])
 
     if (pageData.actionData instanceof Response) {
-      // If the action returns a Response object, we return it directly.
-      // React Router v7 supports this as well, see https://reactrouter.com/how-to/actions#throwing-responses
-      // This is useful for redirects, authentication, etc.
-      return {
-        // TODO: make the function be compatible with Response objects as returning objects
-        status: pageData.actionData.status,
-        headers: Array.from(pageData.actionData.headers.entries()),
-        body: await pageData.actionData.text(),
-      }
+      // If the action returns a Response object, return it directly (redirects, auth, etc.)
+      return pageData.actionData
     }
   } else if (match?.route.mod.loader) {
     pageData.loaderData = await runServerHandler(match.route.mod.loader, ctx)
 
     if (pageData.loaderData instanceof Response) {
-      // If the loader returns a Response object, we return it directly.
-      // React Router v7 supports this as well, see https://reactrouter.com/how-to/actions#throwing-responses
-      // This is useful for redirects, authentication, etc.
-      return {
-        // TODO: make the function be compatible with Response objects as returning objects
-        status: pageData.loaderData.status,
-        headers: Array.from(pageData.loaderData.headers.entries()),
-        body: await pageData.loaderData.text(),
-      }
+      // If the loader returns a Response object, return it directly (redirects, auth, etc.)
+      return pageData.loaderData
     }
   }
 
@@ -125,7 +110,9 @@ export async function renderRequest(req: { url: string; method: string; headers:
     '<!doctype html>' +
     appHtml.replace('</body>', `<script id="__DATA" type="application/json">${payload}</script></body>`)
 
-  return { status, headers, body: finalHtml }
+  // Ensure Content-Type is set; append any extra headers like X-Action
+  const headers = new Headers([['Content-Type', 'text/html; charset=utf-8'], ...extraHeaders])
+  return new Response(finalHtml, { status, headers })
 }
 
 // Opt-in for better server HMR support during development

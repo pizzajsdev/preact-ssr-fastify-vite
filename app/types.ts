@@ -1,7 +1,18 @@
-import type { ComponentChildren } from 'preact'
+import type { ComponentChildren, VNode } from 'preact'
 
 declare global {
+  namespace SSRServer {
+    export type RenderRequest = (request: Request) => Promise<Response>
+  }
+
   namespace Route {
+    export type RouteModule = {
+      default: (props: { data?: any; params: Record<string, string | string[]> }) => VNode<any>
+      meta?: Meta
+      loader?: Loader
+      action?: Action
+    }
+
     // Context passed to server-only handlers.  This includes the URL of the
     // request, dynamic parameters extracted from the pathname, and the original
     // Request object for further data (e.g. headers, body).

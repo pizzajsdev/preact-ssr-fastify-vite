@@ -1,12 +1,13 @@
 import preact from '@preact/preset-vite'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, type UserConfig } from 'vite'
+import ssrDevServer from './server/dev-server'
 
 // Vite configuration using the new Environment API.  This defines a client
 // build and an additional SSR build, and coordinates both in production.
 export default defineConfig(<UserConfig>{
-  plugins: [tailwindcss(), preact()],
   appType: 'custom',
+  plugins: [tailwindcss(), preact(), ssrDevServer()],
   environments: {
     client: {
       consumer: 'client',
@@ -28,8 +29,8 @@ export default defineConfig(<UserConfig>{
     ssr: {
       consumer: 'server',
       build: {
-        ssr: 'app/entry-server.tsx',
         outDir: 'dist/ssr',
+        ssr: 'app/entry-server.tsx',
         copyPublicDir: false,
         sourcemap: true,
       },

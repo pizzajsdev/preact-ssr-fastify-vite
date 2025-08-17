@@ -1,4 +1,4 @@
-import './styles.css'
+import styles from './styles.css?inline'
 
 // Data returned from the root loader.  You can extend this with more fields
 // as your application grows.
@@ -26,10 +26,13 @@ export function Layout(props: Route.PageProps<typeof loader>) {
         {meta.ogTitle && <meta property="og:title" content={meta.ogTitle} />}
         {meta.ogImage && <meta property="og:image" content={meta.ogImage} />}
         <link rel="icon" href="/favicon.ico" />
-        {/* Dev server will transform HTML for assets; prod will inject CSS and swap the entry script */}
+        {/* Inline the CSS to prevent FOUC on the dev server */}
+        <style dangerouslySetInnerHTML={{ __html: styles }} />
       </head>
       <body>
+        {/* Similar to RR <Outlet />: */}
         <div id="root">{props.children}</div>
+        {/* Similar to RR <Scripts />: */}
         <script type="module" src="/app/entry-client.tsx"></script>
       </body>
     </html>
