@@ -53,14 +53,15 @@ export default function vitePluginSsrDevServer(): Plugin {
 
           // Skip Vite internals and common asset routes (any method)
           if (
-            /^\/@.+$/.test(url) ||
-            /\?t=\d+$/i.test(url) ||
-            /^\/favicon\.ico$/i.test(url) ||
-            /^\/static\/.+/.test(url) ||
-            /^\/node_modules\//.test(url) ||
-            /\.(js|mjs|jsx|ts|tsx|css|map|json|png|jpe?g|gif|svg|ico|webp|avif|wasm|txt|woff2?|ttf|eot|mp4|mp3)(\?|$)/i.test(
-              url,
-            )
+            [
+              /^\/@.+$/,
+              /.*\.(ts|tsx|vue)($|\?)/,
+              /.*\.(s?css|less)($|\?)/,
+              /^\/favicon\.ico$/,
+              /.*\.(svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf|eot|mp4|mp3|ogg|webm|txt|webmanifest)($|\?)/,
+              /^\/(public|assets|static)\/.+/,
+              /^\/node_modules\/.*/,
+            ].some((re) => re.test(url))
           ) {
             return next()
           }

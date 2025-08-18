@@ -19,6 +19,9 @@ structure.
 > API routes, loader data revalidation and client re-hydration, throwing Response objects, .server/client.ts file
 > boundaries, not found page, error boundaries, and other features.
 
+Consider using [`vite-plugin-ssr`](https://vite-plugin-ssr.com/) or [`vike`](https://vike.dev/) if you want a more
+mature SSR plugin or a modular framework. This project only showcases how it works under the hood.
+
 ## Prerequisites
 
 - Node.js 22.17+ with `pnpm`.
